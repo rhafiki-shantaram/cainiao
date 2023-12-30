@@ -1,8 +1,12 @@
-const puppeteer = require("puppeteer");
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 require("dotenv").config();
 
-const scrapeLogic = async(res) => {
+puppeteer.use(StealthPlugin());
+
+const scrapeLogic = async (res) => {
     const browser = await puppeteer.launch({
+        headless: false,
         args: [
             "--disable-setuid-sandbox",
             "--no-sandbox",
@@ -18,7 +22,7 @@ const scrapeLogic = async(res) => {
         // Navigate to the specified page
         await page.goto('https://b.gfn.cainiao.com/dist/orderFrame#/abnor/outbound', { waitUntil: 'networkidle2' });
 
-        // Interact with the login form using default Puppeteer methods
+        // Interact with the login form
         await page.type('input[placeholder="Email / Phone"]', '17609048951');
         await page.type('input[placeholder="Password"]', 'linghang123456');
         await page.click('button[type="submit"]');
@@ -67,7 +71,7 @@ const scrapeLogic = async(res) => {
         if (hasData) {
             const tableData = await extractTableData(page);
             const transformedData = transformData(tableData);
-            res.send(transformedData);
+            res.send(transformedData); // Send data back as response
         } else {
             console.log("Data not found after " + maxRetries + " retries.");
             res.send("Data not found after " + maxRetries + " retries.");
@@ -81,24 +85,6 @@ const scrapeLogic = async(res) => {
         res.send(`Error: ${e}`);
     }
 };
-
-function transformData(data) {
-    const transformed = data.rows.map(row => {
-        let obj = {};
-        row.forEach((value, index) => {
-            obj[data.headers[index]] = value;
-        });
-        return obj;
-    });
-    return transformed;
-}
-
-async function checkTableData(page) {
-    return await page.evaluate(() => {
-        const rows = document.querySelectorAll('.next-table-body tbody .next-table-row');
-        return rows.length > 0;
-    });
-}
 
 async function extractTableData(page) {
     return await page.evaluate(() => {
@@ -117,6 +103,24 @@ async function extractTableData(page) {
             data.rows.push(rowData);
         });
         return data;
+    });
+}
+
+function transformData(data) {
+    const transformed = data.rows.map(row => {
+        let obj = {};
+        row.forEach((value, index) => {
+            obj[data.headers[index]] = value;
+        });
+        return obj;
+    });
+    return transformed;
+}
+
+async function checkTableData(page) {
+    return await page.evaluate(() => {
+        const rows = document.querySelectorAll('.next-table-body tbody .next-table-row');
+        return rows.length > 0;
     });
 }
 
