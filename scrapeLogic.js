@@ -16,14 +16,18 @@ const scrapeLogic = async (res) => {
         executablePath: process.env.NODE_ENV === 'production' ? process.env.PUPPETEER_EXECUTABLE_PATH : puppeteer.executablePath()
     });
 
+    let page;
+
     try {
-        const page = await browser.newPage();
+        page = await browser.newPage();
 
         // Navigate to the specified page
         await page.goto('https://b.gfn.cainiao.com/dist/orderFrame#/abnor/outbound', { waitUntil: 'networkidle2' });
 
-        // Interact with the login form
+        // Wait and interact with the login form
+        await page.waitForSelector('input[placeholder="Email / Phone"]');
         await page.type('input[placeholder="Email / Phone"]', '17609048951');
+        await page.waitForSelector('input[placeholder="Password"]');
         await page.type('input[placeholder="Password"]', 'linghang123456');
         await page.click('button[type="submit"]');
 
@@ -31,17 +35,21 @@ const scrapeLogic = async (res) => {
         await page.waitForNavigation({ waitUntil: 'networkidle0' });
 
         // Click the button in the specified div and wait
+        await page.waitForSelector('#ice-container div[class^="ProcessGuidance--ProcessWrap--"] div[class^="ProcessGuidance--buttonStyle--"] button');
         const buttonSelector = '#ice-container div[class^="ProcessGuidance--ProcessWrap--"] div[class^="ProcessGuidance--buttonStyle--"] button';
         await page.click(buttonSelector);
         await page.waitForTimeout(3000); // Wait for 3 seconds
 
         // Expand menu options, click the first list item and wait
+        await page.waitForSelector('.index-slider .slider-wrapper');
         await page.click('.index-slider .slider-wrapper');
         await page.waitForTimeout(3000); // Wait for 3 seconds
+        await page.waitForSelector('.ant-menu.ant-menu-inline.ant-menu-sub li:first-child');
         await page.click('.ant-menu.ant-menu-inline.ant-menu-sub li:first-child');
         await page.waitForTimeout(3000); // Wait for 3 seconds
 
         // Change dropdown selection and wait
+        await page.waitForSelector('.next-pagination-size-selector .next-select.next-select-trigger');
         await page.click('.next-pagination-size-selector .next-select.next-select-trigger');
         await page.waitForSelector('.next-overlay-inner.next-select-spacing-tb');
         await page.evaluate(() => {
@@ -77,12 +85,16 @@ const scrapeLogic = async (res) => {
             res.send("Data not found after " + maxRetries + " retries.");
         }
 
-        // Close the browser
-        await browser.close();
-
     } catch (e) {
-        console.log(`Error: ${e}`);
+        console.error(`Error: ${e}`);
+        if (page) {
+            await page.screenshot({ path: 'error-screenshot.png' });
+        }
         res.send(`Error: ${e}`);
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
     }
 };
 
